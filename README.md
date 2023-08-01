@@ -26,6 +26,7 @@ This repository includes the implementation of the S2 framework.
 To build S2, one need to install:
 * Java (openjdk version "19" has been used for testing)
 * MySQL (v8.0.33 has been used for testing)
+* TPCH lineitem table (https://www.tpc.org/tpch/): The code is developed for lineitem table with 4 columns (Linenumber, Partkey, Orderkey & Suppkey) only. We would work in future to generalise for any kind of dataset.
   
 ## Setup
 ### To run locally
