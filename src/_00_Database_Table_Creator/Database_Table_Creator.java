@@ -32,7 +32,6 @@ public class Database_Table_Creator {
     private static boolean showDetails = false;
     private static final ArrayList<Long> threadTimes = new ArrayList<>();
     private static Connection con;
-    static List<String[]> dataLines = new ArrayList<>();
 
     private static FileWriter writer1;
     private static FileWriter writer2;
