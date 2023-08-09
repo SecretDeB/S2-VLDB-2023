@@ -25,26 +25,36 @@ import java.util.stream.Collectors;
 
 public class Database_Table_Creator {
 
+    // query to download tpch.lineitem table from database
     private static final String query_base = "select ORDERKEY, PARTKEY, SUPPKEY, LINENUMBER from tpch.LINEITEM LIMIT ";
+
+    // stores total number of rows of the table that need to be processed
     private static int totalRows;
+
+    // stores the number threads and number of rows per thread that program should run on. Currently, this code supports only single level threading
     private static int numThreads;
     private static int numRowsPerThread;
+
+    // variables to stores output details
     private static boolean showDetails = false;
     private static final ArrayList<Long> threadTimes = new ArrayList<>();
+
+    // stores database connection variable
     private static Connection con;
 
+    // writers for writing into files
     private static FileWriter writer1;
     private static FileWriter writer2;
     private static FileWriter writer3;
     private static FileWriter writer4;
 
+    // helper variables
     private static int origORD;
     private static int origPART;
     private static int origSUPP;
     private static int origLINE;
 
-
-
+    // constructor to initialize the object paramters
     public Database_Table_Creator(final int totalRows, final int numThreads, final boolean showDetails) {
         Database_Table_Creator.totalRows = totalRows;
         Database_Table_Creator.numThreads = numThreads;
@@ -52,11 +62,16 @@ public class Database_Table_Creator {
         Database_Table_Creator.showDetails = showDetails;
     }
 
+    /**
+     * Downloads Cleartext 'tpch.lineitem' table from database into 'data/cleartext folder'. It then creates four
+     * additive and multiplicative shares of the table stored into 'data/shares folder'.
+     *
+     * @param args: takes number of rows to be processed as input
+     */
     public static void main(String[] args) throws IOException {
 
         Database_Table_Creator DBShareCreation = new Database_Table_Creator(Integer.parseInt(args[0]), 1, false);
 
-        // doPrework connects to the database, deletes the existing SHARE tables, and creates two new SHARE tables
         doPreWork();
 
         // doWork lcreates and starts all threads
@@ -66,8 +81,14 @@ public class Database_Table_Creator {
         doPostWork();
     }
 
+    /**
+     * Performs initialization tasks like connecting to the database, writer objects.
+     *
+     * @throws IOException : throws during creation of directories
+     */
     private static void doPreWork() throws IOException {
 
+        // making connection to the database
         System.out.println("Connection Started");
 
         try {
@@ -76,13 +97,14 @@ public class Database_Table_Creator {
             System.out.println(ex);
         }
 
+        // creating directories to stores shares and cleartext files
         System.out.println("Preparing CSV Files");
 
         String diskPath = "data/shares/";
 
         Files.createDirectories(Paths.get(diskPath));
 
-
+        // initializing writer object for file writes
         try {
             writer1 = new FileWriter(diskPath + "ServerTable1.csv");
             writer2 = new FileWriter(diskPath + "ServerTable2.csv");
@@ -91,31 +113,31 @@ public class Database_Table_Creator {
         } catch (IOException ex) {
             Logger.getLogger(Database_Table_Creator.class.getName()).log(Level.SEVERE, null, ex);
         }
-
-
     }
 
+    /**
+     *  Downloads the cleartext tpch.lineitem tables and creates four shares of the same.
+     * @return the time taken to download cleartext and create shares
+      */
     private static long doWork() {
 
+        // initializing thread list for storing all threads
         List<Thread> threadList = new ArrayList<>(); // The list containing all the threads
 
         long avgOperationTime = 0;
 
-        // Create threads and add them to threadlist
-
+        // create threads and add them to thread list
         for(int i = 0; i < numThreads; i++){
             int threadNum = i+1;
             threadList.add(new Thread(new ParallelTask(numRowsPerThread, threadNum), "Thread" + threadNum));
         }
 
-        // Start all threads
-
+        // start all threads in the list
         for(int i = 0; i < numThreads; i++){
             threadList.get(i).start();
         }
 
-        // Wait for all threads to finish
-
+        // wait for all threads to finish
         for (Thread thread : threadList) {
             try{
                 thread.join();
@@ -124,9 +146,10 @@ public class Database_Table_Creator {
             }
         }
 
-        // The Thread run times for each thread are stored in the array threadTimes
-        // This loop calculates the average thread time across all the threads
-
+        /*
+        The Thread run times for each thread are stored in the array threadTimes. This loop calculates the average
+        thread time across all the threads
+         */
         for (int i = 0; i < threadTimes.size(); i++) {
             avgOperationTime += threadTimes.get(i);
         }
@@ -136,6 +159,7 @@ public class Database_Table_Creator {
 
     }
 
+    // defines work performed by each thread
     private static class ParallelTask implements Runnable {
 
         private final int numRows;
@@ -153,16 +177,20 @@ public class Database_Table_Creator {
 
             int count = 0;
 
+            // start count of the row
             int startRow = (threadNum - 1) * numRows;
 
+            // random object for random number generation needed while shares creation
             Random rand = new Random();
 
+            // stores the result returned by database
             ResultSet rs;
 
             Instant startTime = Instant.now();
 
-
             try{
+
+                // downloads the tpch.lineitem table from the database
                 System.out.println("Table Loading Started");
                 Instant tableLoad = Instant.now();
 
@@ -175,6 +203,7 @@ public class Database_Table_Creator {
                 System.out.println("Splitting Started");
                 Instant splittingStart = Instant.now();
 
+                // for each row, each column value's shares both additive and multiplicative is created
                 for(int i = startRow; i < startRow + numRows; i++){
                     rs.next();
 
@@ -183,9 +212,10 @@ public class Database_Table_Creator {
                     origSUPP = rs.getInt("SUPPKEY");
                     origLINE = rs.getInt("LINENUMBER");
 
-
-
-                    // MASTER_SUPPKEY
+                    /*
+                    SUPPKEY: as 'supkey' is considered as string column, the additive shares of each digit of 'suppkey'
+                    value is created
+                     */
                     LinkedList<Integer> stack = new LinkedList<>();
                     ArrayList<Integer> numInArrList = new ArrayList<>();
 
@@ -194,6 +224,7 @@ public class Database_Table_Creator {
 
                     int tempSUPP = origSUPP;
 
+                    // iterating over digits
                     while (tempSUPP > 0) {
                         stack.push(tempSUPP % 10 );
                         tempSUPP = tempSUPP / 10;
@@ -201,39 +232,59 @@ public class Database_Table_Creator {
                     while (!stack.isEmpty())
                         numInArrList.add(stack.pop());
 
+                    /*
+                     creating additive shares of each digit by generating a random number and using that as first part
+                     and second part as the subtracted value between digit and random value.
+                     */
                     for (Integer numPart : numInArrList)
                         c3p1LIST.add(rand.nextInt(100));
 
                     for (int j = 0; j < c3p1LIST.size(); j++)
                         c3p2LIST.add(numInArrList.get(j) - c3p1LIST.get(j));
 
+                    // the additive shares of each digit is appended using '|'
                     String c01p1 = c3p1LIST.stream().map(Object::toString).collect(Collectors.joining("|"));
                     String c01p2 = c3p2LIST.stream().map(Object::toString).collect(Collectors.joining("|"));
                     String c01p3 = c01p1;
                     String c01p4 = c01p2;
 
 
-                    // SPLIT_ORDERKEY
+                    /*
+                     Orderkey: As this column is numeric hence creating additive shares of each value by generating a
+                     random number and using that as first part and second part as the subtracted value between value
+                     and random value.
+                     */
                     int c02p1 = Helper.mod(rand.nextInt(1000000));
                     int c02p2 = origORD - c02p1;
                     int c02p3 = c02p1;
                     int c02p4 = c02p2;
 
 
-                    // SPLIT_PARTKEY
+                   /*
+                     Partkey: As this column is numeric hence creating additive shares of each value by generating a
+                     random number and using that as first part and second part as the subtracted value between value
+                     and random value.
+                     */
                     int c03p1 = Helper.mod(rand.nextInt(1000000));
                     int c03p2 = origPART - c03p1;
                     int c03p3 = c03p1;
                     int c03p4 = c03p2;
 
 
-                    // SPLIT_LINENUMBER
+                    /*
+                     Linenumber: As this column is numeric hence creating additive shares of each value by generating a
+                     random number and using that as first part and second part as the subtracted value between value
+                     and random value.
+                     */
                     int c04p1 = Helper.mod(rand.nextInt(1000000));
                     int c04p2 = origLINE - c04p1;
                     int c04p3 = c04p1;
                     int c04p4 = c04p2;
 
-                    // M_ORDERKEY
+                    /*
+                     Orderkey: As this column is numeric hence creating multiplicative shares of each value by using
+                     Shamir Secret Sharing function.
+                     */
                     int ordVals[] = func(origORD);
                     int c08p1 = ordVals[0];
                     int c08p2 = ordVals[1];
@@ -241,7 +292,10 @@ public class Database_Table_Creator {
                     int c08p4 = ordVals[3];
 
 
-                    // M_PARTKEY
+                    /*
+                     Partkey: As this column is numeric hence creating multiplicative shares of each value by using
+                     Shamir Secret Sharing function.
+                     */
                     int partVals[] = func(origPART);
                     int c09p1 = partVals[0];
                     int c09p2 = partVals[1];
@@ -249,7 +303,7 @@ public class Database_Table_Creator {
                     int c09p4 = partVals[3];
 
 
-                    // M_LINENUMBER
+                    /*                */
                     int lineVals[] = func(origLINE);
                     int c10p1 = lineVals[0];
                     int c10p2 = lineVals[1];
