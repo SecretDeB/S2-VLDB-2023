@@ -303,14 +303,20 @@ public class Database_Table_Creator {
                     int c09p4 = partVals[3];
 
 
-                    /*                */
+                    /*
+                     Linenumber: As this column is numeric hence creating multiplicative shares of each value by using
+                     Shamir Secret Sharing function.
+                     */
                     int lineVals[] = func(origLINE);
                     int c10p1 = lineVals[0];
                     int c10p2 = lineVals[1];
                     int c10p3 = lineVals[2];
                     int c10p4 = lineVals[3];
 
-                    // M_Suppkey
+                     /*
+                     Suppkey: As this column is considered numeric for multiplicative shares hence creating shares of
+                     each value by using Shamir Secret Sharing function.
+                     */
                     int suppVals[] = func(origSUPP);
                     int c11p1 = suppVals[0];
                     int c11p2 = suppVals[1];
@@ -318,10 +324,8 @@ public class Database_Table_Creator {
                     int c11p4 = suppVals[3];
 
 
+                    // share values are written to file
                     try {
-
-
-
                         writer1.append(String.valueOf(c04p1));
                         writer1.append(",");
                         writer1.append(String.valueOf(c03p1));
@@ -338,11 +342,6 @@ public class Database_Table_Creator {
                         writer1.append(",");
                         writer1.append(String.valueOf(c11p1));
                         writer1.append("\n");
-
-
-
-
-
 
                         writer2.append(String.valueOf(c04p2));
                         writer2.append(",");
@@ -361,9 +360,6 @@ public class Database_Table_Creator {
                         writer2.append(String.valueOf(c11p2));
                         writer2.append("\n");
 
-
-
-
                         writer3.append(String.valueOf(c04p3));
                         writer3.append(",");
                         writer3.append(String.valueOf(c03p3));
@@ -380,7 +376,6 @@ public class Database_Table_Creator {
                         writer3.append(",");
                         writer3.append(String.valueOf(c11p3));
                         writer3.append("\n");
-
 
                         writer4.append(String.valueOf(c04p4));
                         writer4.append(",");
@@ -412,7 +407,6 @@ public class Database_Table_Creator {
                 long tableSplittingTime = Duration.between(splittingStart, Instant.now()).toMillis();
 
                 System.out.println("100% complete");
-
                 System.out.println();
                 System.out.println("Table Loading Time: " + tableLoadTime + " ms");
                 System.out.println("Table Splitting Time: " + tableSplittingTime + " ms");
@@ -424,6 +418,7 @@ public class Database_Table_Creator {
 
             Duration totalThreadTime = Duration.between(threadStartTime, Instant.now());
 
+            // depending upon the flag printing the details
             if(showDetails) {
                 System.out.println("\n" + Thread.currentThread().getName().toUpperCase());
                 System.out.println("Total Operations: " + count);
@@ -431,11 +426,11 @@ public class Database_Table_Creator {
                 System.out.println("Thread Start Time: " + DateTimeFormatter.ofPattern("hh:mm:ss.SSS").format(LocalDateTime.ofInstant(threadStartTime, ZoneOffset.UTC)));
                 System.out.println("Thread Start Time: " + DateTimeFormatter.ofPattern("hh:mm:ss.SSS").format(LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC)));
             }
-
             threadTimes.add(totalThreadTime.toMillis());
         }
     }
 
+    // performing post operations like closing, flushing the writers
     private static void doPostWork(){
         try {
             writer1.toString();
@@ -458,16 +453,26 @@ public class Database_Table_Creator {
         }
     }
 
+    /**
+     * The function performs multiplicative secret share creation using Shamir Secret Sharing
+     *
+     * @param b : stores the value or secret whose Shamir Secret shares is to be created
+     * @return array of four secret shares for the secret value
+     */
     private static int[] func(int b){
+
         Random rand = new Random();
 
+        // stores random values generated for slope of the line
         int m = rand.nextInt(2000) - 1000;
 
+        // as four shares are created for each value the value of x is 1,2,3,4 and secret value b is the intercept
         int m1 = 1 * m + b;
         int m2 = 2 * m + b;
         int m3 = 3 * m + b;
         int m4 = 4 * m + b;
 
+        // stores secret shares of the value b after performing modulus operation
         int vals[] = new int[]{Helper.mod(m1), Helper.mod(m2), Helper.mod(m3), Helper.mod(m4)};
 
         return vals;
