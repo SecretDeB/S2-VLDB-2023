@@ -216,6 +216,7 @@ public class Client extends Thread {
         server1.start();
         server2.start();
 
+        // started to listen for incoming responses from servers
         timestamps1.add(Instant.now());
         Client client = new Client();
         client.startAsReceiver();
