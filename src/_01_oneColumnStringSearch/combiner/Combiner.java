@@ -65,6 +65,7 @@ public class Combiner extends Thread {
         }
     }
 
+    // working on server data to process for client
     private static void doWork() {
         // the list containing all the threads
 
@@ -81,7 +82,6 @@ public class Combiner extends Thread {
 
         // start all threads
         for (int i = 0; i < numThreads; i++) {
-
             threadList.get(i).start();
         }
 

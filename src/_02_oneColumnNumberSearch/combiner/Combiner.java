@@ -18,25 +18,34 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Combiner extends Thread {
+    // stores result received from servers
     private static List<int[]> serverResult = Collections.synchronizedList(new ArrayList<>());
     private static final ExecutorService threadPool = Executors.newFixedThreadPool(Constants.getThreadPoolSize());
     private static List<SocketCreation> socketCreations = new ArrayList<>();
     private static int[] result;
 
+    // the number of row of tpch.lineitem considered
     private static int numRows;
+    // the number of threads combiner program is running on
     private static int numThreads;
+    // the number of row per thread
     private static int numRowsPerThread;
 
+    // stores port value for combiner
     private static int combinerPort;
+    // stores port value for client
     private static int clientPort;
+    // stores IP value for client
     private static String clientIP;
 
+    // stores server data
     private static int[] server1;
     private static int[] server2;
 
     private static final Logger log = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
     private static ArrayList<Instant> timestamps = new ArrayList<>();
 
+    // operation performed by each thread
     private static class ParallelTask implements Runnable {
         private int threadNum;
 
@@ -48,33 +57,35 @@ public class Combiner extends Thread {
         public void run() {
             int startRow = (threadNum - 1) * numRowsPerThread;
             int endRow = startRow + numRowsPerThread;
+            // adding data received from the server
             for (int i = startRow; i < endRow; i++) {
                 result[i] = (int) Helper.mod((long) server1[i] + (long) server2[i]);
             }
         }
     }
 
+    // working on server data to process for client
     private static void doWork() {
-        // The list containing all the threads
+        // the list containing all the threads
 
         server1 = serverResult.get(0);
         server2 = serverResult.get(1);
         List<Thread> threadList = new ArrayList<>();
 
-        // Create threads and add them to threadlist
+        // create threads and add them to threadlist
         int threadNum;
         for (int i = 0; i < numThreads; i++) {
             threadNum = i + 1;
             threadList.add(new Thread(new ParallelTask(threadNum), "Thread" + threadNum));
         }
 
-        // Start all threads
+        // start all threads
         for (int i = 0; i < numThreads; i++) {
 
             threadList.get(i).start();
         }
 
-        // Wait for all threads to finish
+        // wait for all threads to finish
         for (Thread thread : threadList) {
             try {
                 thread.join();
@@ -84,6 +95,7 @@ public class Combiner extends Thread {
         }
     }
 
+    // socket to read data from servers
     class SocketCreation implements Runnable {
 
         private final Socket serverSocket;
@@ -96,6 +108,7 @@ public class Combiner extends Thread {
         public void run() {
             ObjectInputStream inFromServer;
             try {
+                // initializing input stream for reading the data
                 inFromServer = new ObjectInputStream(serverSocket.getInputStream());
                 serverResult.add((int[]) inFromServer.readObject());
             } catch (IOException | ClassNotFoundException ex) {
@@ -110,6 +123,7 @@ public class Combiner extends Thread {
         super.run();
     }
 
+    // starting combiner to process server data
     private void startCombiner() {
         Socket serverSocket;
         Socket clientSocket;
@@ -120,11 +134,12 @@ public class Combiner extends Thread {
             System.out.println("Combiner Listening........");
 
             while (true) {
-                //Reading data from the server
+                // listening over the socket for connections
                 serverSocket = ss.accept();
+                // reading data from the server
                 socketCreations.add(new SocketCreation(serverSocket));
 
-                //Processing data received from both the servers
+                // processing data after receiving data from both the servers
                 if (socketCreations.size() == 2) {
                     timestamps = new ArrayList<>();
                     timestamps.add(Instant.now());
@@ -134,18 +149,19 @@ public class Combiner extends Thread {
                     for (Future<?> future : serverJobs)
                         future.get();
                     doWork();
-                    //Sending data from the client
+                    // sending data from the client
                     clientSocket = new Socket(clientIP, clientPort);
                     ObjectOutputStream outToClient = new ObjectOutputStream(clientSocket.getOutputStream());
                     outToClient.writeObject(result);
                     clientSocket.close();
-                    //Resetting storage variables
+
+                    // resetting storage variables
                     result = new int[numRows];
                     serverJobs = new ArrayList<>();
                     serverResult = Collections.synchronizedList(new ArrayList<>());
                     socketCreations = new ArrayList<>();
 
-                    //Calculating the time spent
+                    // calculating the time spent
                     timestamps.add(Instant.now());
 //                    System.out.println(Helper.getProgramTimes(timestamps));
 //                    log.log(Level.INFO, "Total Combiner time:" + Helper.getProgramTimes(timestamps));
@@ -156,8 +172,11 @@ public class Combiner extends Thread {
         }
     }
 
+    /**
+     * It performs initialization tasks
+     */
     private static void doPreWork(String[] args) {
-        //Reading Combiner property file
+        // reading combiner property file
         String pathName = "config/Combiner.properties";
         Properties properties = Helper.readPropertiesFile(pathName);
 
@@ -172,6 +191,9 @@ public class Combiner extends Thread {
         result = new int[numRows];
     }
 
+    /**
+     * combiner process the data received from server before sending to client
+     */
     public static void main(String args[]) {
 
         doPreWork(args);

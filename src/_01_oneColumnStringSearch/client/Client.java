@@ -91,7 +91,7 @@ public class Client extends Thread {
             Random randSeedClient = new Random(seedClient);
             int prg;
 
-            // Evaluating which rows matches the requested query and storing row ids in result list
+            // evaluating which rows matches the requested query and storing row ids in result list
             for (int i = startRow; i < endRow; i++) {
                 prg = randSeedClient.nextInt(Constants.getMaxRandomBound() -
                         Constants.getMinRandomBound()) + Constants.getMinRandomBound();
@@ -141,7 +141,7 @@ public class Client extends Thread {
         @SuppressWarnings("unchecked")
         public void run() {
             try {
-                // Receiving the data from the Combiner
+                // receiving the data from the Combiner
                 ObjectInputStream inFromServer = new ObjectInputStream(socket.getInputStream());
                 resultCombiner = (int[]) inFromServer.readObject();
                 // interpolating data to get results
