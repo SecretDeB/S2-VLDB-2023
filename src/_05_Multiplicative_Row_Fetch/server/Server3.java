@@ -19,38 +19,58 @@ import java.util.logging.Logger;
 
 public class Server3 {
 
+    // query string to get server data from database
     private static final String query_base = "select M_ORDERKEY, M_PARTKEY, M_LINENUMBER, M_SUPPKEY from "
             + Helper.getTablePrefix() + "SERVERTABLE3 where rowID > ";
 
 
+    // the number of row of tpch.lineitem considered
     private static int numRows;
+    // the number of threads server program is running on
     private static int numThreads;
+    // the number of row per thread
     private static int numRowsPerThread;
 
+    // store value for orderkey column of tpch.lineitem
     private static int[][][] orderKeySum;
+    // store value for partkey column of tpch.lineitem
     private static int[][][] partKeySum;
+    // store value for linenumber column of tpch.lineitem
     private static int[][][] lineNumberSum;
+    // store value for suppkey column of tpch.lineitem
     private static int[][][] subKeySum;
+    // store aggregate thread value for orderkey column of tpch.lineitem
     private static int[] totalOrderKey;
+    // store aggregate thread value for partkey column of tpch.lineitem
     private static int[] totalPartKey;
+    // store aggregate thread value for linenumber column of tpch.lineitem
     private static int[] totalLineNumberKey;
+    // store aggregate thread value for suppkey column of tpch.lineitem
     private static int[] totalSubKey;
+    // the total number of row ids requested
     private static int querySize;
+    // the size of filter based on number of rows considered which is sqrt(numRows)
     private static int filter_size;
-    private static int row_filter[][];
-    private static int col_filter[][];
+    // stores the row filter for row ids value
+    private static int[][] row_filter;
+    // stores the column filter for row ids value
+    private static int[][] col_filter;
+    // stores seed value for client for random number generation
     private static int seedClient;
 
-
+    // stores result after server processing
     private static int[][] result;
     private static ArrayList<Instant> timestamps = new ArrayList<>();
     private static final Logger log = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
-
+    // stores port for server
     private static int serverPort;
+    // stores port for combiner
     private static int combinerPort;
+    // stores IP for combiner
     private static String combinerIP;
 
+    // operation performed by each thread
     private static class ParallelTask implements Runnable {
 
         private final int threadNum;
@@ -61,6 +81,7 @@ public class Server3 {
 
         @Override
         public void run() {
+            // making connection to the database
             Connection con = null;
 
             try {
@@ -78,8 +99,10 @@ public class Server3 {
                 Statement stmt = con.createStatement();
                 ResultSet rs = stmt.executeQuery(query);
 
+                // performing server operation on each row of the database
                 for (int i = startRow; i < endRow; i++) {
                     rs.next();
+                    // multiplication with the row filter for each column value
                     for (int k = 0; k < querySize; k++) {
                         orderKeySum[k][threadNum - 1][i % filter_size] = (int) Helper.mod(orderKeySum[k][threadNum - 1][i % filter_size] + Helper.mod(rs.getLong("M_ORDERKEY") * row_filter[k][i / filter_size]));
                         partKeySum[k][threadNum - 1][i % filter_size] = (int) Helper.mod(partKeySum[k][threadNum - 1][i % filter_size] + Helper.mod(rs.getLong("M_PARTKEY") * row_filter[k][i / filter_size]));
@@ -89,6 +112,7 @@ public class Server3 {
                 }
 
                 for (int i = 0; i < querySize; i++) {
+                    // multiplication with the col filter for each column value
                     for (int k = 0; k < filter_size; k++) {
                         orderKeySum[i][threadNum - 1][k] = (int) Helper.mod(orderKeySum[i][threadNum - 1][k] * (long) col_filter[i][k]);
                         partKeySum[i][threadNum - 1][k] = (int) Helper.mod(partKeySum[i][threadNum - 1][k] * (long) col_filter[i][k]);
@@ -112,6 +136,7 @@ public class Server3 {
         }
     }
 
+    // executing server operation over threads
     private static void doWork(String[] data) {
 
         row_filter = Helper.strToStrArr1(data[0]);
@@ -121,34 +146,34 @@ public class Server3 {
         querySize = row_filter.length;
         result = new int[querySize + 1][4];
 
-        // To store result for each thread upon column-wise multiply operation
+        // to store result for each thread upon column-wise multiply operation
         orderKeySum = new int[querySize][numThreads][filter_size];
         partKeySum = new int[querySize][numThreads][filter_size];
         lineNumberSum = new int[querySize][numThreads][filter_size];
         subKeySum = new int[querySize][numThreads][filter_size];
 
-        // To store the result upon column-wise and row-wise multiplication
+        // to store the result upon column-wise and row-wise multiplication
         totalOrderKey = new int[querySize];
         totalPartKey = new int[querySize];
         totalLineNumberKey = new int[querySize];
         totalSubKey = new int[querySize];
 
-        // The list containing all the threads
+        // the list containing all the threads
         List<Thread> threadList = new ArrayList<>();
 
-        // Create threads and add them to threadlist
+        // create threads and add them to threadlist
         int threadNum;
         for (int i = 0; i < numThreads; i++) {
             threadNum = i + 1;
             threadList.add(new Thread(new ParallelTask(threadNum), "Thread" + threadNum));
         }
 
-        // Start all threads
+        // start all threads
         for (int i = 0; i < numThreads; i++) {
             threadList.get(i).start();
         }
 
-        // Wait for all threads to finish
+        // wait for all threads to finish
         for (Thread thread : threadList) {
             try {
                 thread.join();
@@ -158,7 +183,7 @@ public class Server3 {
         }
 
         Random randSeedClient = new Random(seedClient);
-
+        // adding random value before sending to Client
         for (int i = 0; i < querySize; i++) {
             int randClient = randSeedClient.nextInt(Constants.getMaxRandomBound() - Constants.getMinRandomBound())
                     + Constants.getMinRandomBound();
@@ -171,6 +196,7 @@ public class Server3 {
         result[querySize][0] = 3;
     }
 
+    // performing operations on data received over socket
     static class SocketCreation {
 
         private final Socket clientSocket;
@@ -187,18 +213,18 @@ public class Server3 {
             String[] dataReceived;
 
             try {
-                //Reading the data sent by Client
+                // reading the data sent by Client
                 inFromClient = new ObjectInputStream(clientSocket.getInputStream());
                 dataReceived = (String[]) inFromClient.readObject();
                 doWork(dataReceived);
 
-                //Sending the processed data to Combiner
+                // sending the processed data to Combiner
                 combinerSocket = new Socket(combinerIP, combinerPort);
                 outToCombiner = new ObjectOutputStream(combinerSocket.getOutputStream());
                 outToCombiner.writeObject(result);
                 combinerSocket.close();
 
-                //Calculating timestamps
+                // calculating timestamps
                 timestamps.add(Instant.now());
 //                System.out.println(Helper.getProgramTimes(timestamps));
 //                log.log(Level.INFO, "Total Server3 time:" + Helper.getProgramTimes(timestamps));
@@ -208,6 +234,7 @@ public class Server3 {
         }
     }
 
+    // starting server to listening for incoming connection
     private void startServer() throws IOException {
         Socket socket;
 
@@ -216,6 +243,7 @@ public class Server3 {
             System.out.println("Server3 Listening........");
 
             do {
+                // listening over socket for connections
                 socket = ss.accept();
                 timestamps = new ArrayList<>();
                 timestamps.add(Instant.now());
@@ -226,8 +254,12 @@ public class Server3 {
         }
     }
 
+    /**
+     * It performs initialization tasks
+     */
     private static void doPreWork() {
 
+        // reads configuration properties of the server
         String pathName = "config/Server3.properties";
         Properties properties = Helper.readPropertiesFile(pathName);
 
@@ -242,6 +274,7 @@ public class Server3 {
         filter_size = (int) Math.sqrt(numRows);
     }
 
+    // performs server task required to process client query
     public static void main(String[] args) throws IOException {
 
         doPreWork();
