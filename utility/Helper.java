@@ -16,28 +16,32 @@ import java.util.stream.Stream;
 
 public class Helper {
 
+    // used for writing log statements
     private static final Logger log = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
     public static Boolean getServer() {
         return true;
     }
 
+    // username of MySQL
     public static String getDBUser() {
         return "root";
     }
 
+    // password of MySQL
     public static String getDBPass() {
         return "password";
     }
 
+    // return connection url for MySQL
     public static String getConPath() {
-        // MySql
         if (getServer())
             return "jdbc:mysql://localhost:3306/";
         else
             return "null";
     }
 
+    // check is the MySQL driver is available
     public static Connection getConnection() throws SQLException {
         if (getServer())
             return DriverManager.getConnection(getConPath(), getDBUser(), getDBPass());
@@ -45,7 +49,7 @@ public class Helper {
             return DriverManager.getConnection(getConPath());
     }
 
-
+    // get name of the database as 'tpch'
     public static String getTablePrefix() {
         if (getServer())
             return "tpch.";
@@ -53,12 +57,15 @@ public class Helper {
             return "";
     }
 
+    // to read the configuration file for each server or client
     public static Properties readPropertiesFile(String fileName) {
         FileInputStream fileInputStream;
         Properties properties = null;
         try {
+            // associating file input stream to properties file
             fileInputStream = new FileInputStream(fileName);
             properties = new Properties();
+            // loading properties file
             properties.load(fileInputStream);
         } catch (IOException ioException) {
             log.log(Level.SEVERE, ioException.getMessage());
@@ -66,22 +73,27 @@ public class Helper {
         return properties;
     }
 
+    // perform modulus operation on 'int'
     public static int mod(int number) {
         int modulo = 100000007;
         number = number % modulo;
+        // in case mod of the number is negative
         if (number < 0)
             number = number + modulo;
         return number;
     }
 
+    // perform modulus operation on 'long'
     public static long mod(long number) {
         long modulo = 100000007;
         number = number % modulo;
+        // in case mod of the number is negative
         if (number < 0)
             number = number + modulo;
         return number;
     }
 
+    // convert a string into array of numbers
     public static int[] stringToIntArray(String data) {
         int[] result = new int[data.length()];
         for (int i = 0; i < data.length(); i++) {
@@ -90,40 +102,49 @@ public class Helper {
         return result;
     }
 
+    // to print the result in a file for list datatype
     public static void printResult(List<Integer> result, String fileName) throws IOException {
         System.out.println("The number of rows matching the query is " + result.size());
 
         String pathName = "result/";
+        // creating result directory if not present
         Files.createDirectories(Paths.get(pathName));
         FileWriter writer = new FileWriter(pathName + fileName);
 
         BufferedWriter bufferedWriter = new BufferedWriter(writer);
+        // writing data to file
         for (int data:result) {
             bufferedWriter.append(String.valueOf(data)).append(",");
         }
         bufferedWriter.close();
     }
 
+    // to print the result in a file for set datatype
     public static void printResult(Set<Integer> result, String fileName) throws IOException {
         System.out.println("The number of rows matching the query is " + result.size());
 
         String pathName = "result/";
+        // creating result directory if not present
         Files.createDirectories(Paths.get(pathName));
         FileWriter writer = new FileWriter(pathName + fileName);
         BufferedWriter bufferedWriter = new BufferedWriter(writer);
+        // writing data to file
         for (int data:result) {
             bufferedWriter.append(String.valueOf(data)).append(",");
         }
         bufferedWriter.close();
     }
 
+    // to print the result in a file for int array datatype
     public static void printResult(int[][] result, int[] query, String fileName) throws IOException {
 
 
         String pathName = "result/";
+        // creating result directory if not present
         Files.createDirectories(Paths.get(pathName));
         FileWriter writer = new FileWriter(pathName + fileName);
         BufferedWriter bufferedWriter = new BufferedWriter(writer);
+        // writing data to file
         for (int i = 0; i < result.length; i++) {
             bufferedWriter.append(String.valueOf(query[i] + 1)).append("\n");
             for (int j = 0; j < result[0].length; j++) {
@@ -134,6 +155,7 @@ public class Helper {
         bufferedWriter.close();
     }
 
+    // computing time taken for each program
     public static ArrayList<Long> getProgramTimes(ArrayList<Instant> timestamps) {
 
         ArrayList<Long> durations = new ArrayList<>();
@@ -145,11 +167,13 @@ public class Helper {
         return durations;
     }
 
+    // converting a string array to a string
     public static String strArrToStr(String[] arr) {
         ArrayList<String> arrAsList = new ArrayList<>(Arrays.asList(arr));
         return arrAsList.stream().map(Object::toString).collect(Collectors.joining(", "));
     }
 
+    // converting an integer 1D array to a string
     public static String arrToStr(int[] arr) {
         ArrayList<Integer> arrAsList = new ArrayList<>();
         for (Integer num : arr)
@@ -157,6 +181,7 @@ public class Helper {
         return arrAsList.stream().map(Object::toString).collect(Collectors.joining(", "));
     }
 
+    // converting an integer 2D array to a string
     public static String arrToStr(int[][] arr) {
         String str = Arrays.deepToString(arr);
         str = str.replaceAll("\\], \\[", "\n");
@@ -167,6 +192,7 @@ public class Helper {
         return str;
     }
 
+    // converting a string to a string array
     public static int[][] strToStrArr1(String data) {
         String[] temp = data.split("\n");
         int[][] result = new int[temp.length][];
@@ -180,6 +206,7 @@ public class Helper {
         return result;
     }
 
+    // converting a string to a string array
     public static int[] strToArr(String str) {
         ArrayList<Integer> arrList = new ArrayList<>();
         String temp[];
@@ -206,6 +233,7 @@ public class Helper {
         return result;
     }
 
+    // convert milliseconds to hour, minute and seconds
     public static String convertMillisecondsToHourMinuteAndSeconds(long milliseconds) {
         long seconds = (milliseconds / 1000) % 60;
         long minutes = (milliseconds / (1000 * 60)) % 60;
@@ -213,6 +241,7 @@ public class Helper {
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
 
+    // to help in showing progress bar
     public static void progressBar(double percentInp, long timeSinceStart) {
         int percent = (int) (percentInp + 0.5);
         if (percent == 0)
@@ -237,6 +266,7 @@ public class Helper {
     }
 
 
+    // convert long array to string
     public static String arrToStr(long[] arr) {
         ArrayList<Long> arrAsList = new ArrayList<>();
         for (Long num : arr)
@@ -245,6 +275,7 @@ public class Helper {
     }
 
 
+    // convert 2D string array to string
     public static String arrToStr(String[][] arr) {
         String str = Arrays.deepToString(arr);
         str = str.replaceAll("\\], \\[", "\n");
@@ -255,6 +286,7 @@ public class Helper {
         return str;
     }
 
+    // convert long 2D array to string
     public static String arrToStr(long[][] arr) {
         String str = Arrays.deepToString(arr);
         str = str.replaceAll("\\], \\[", "\n");
@@ -265,11 +297,12 @@ public class Helper {
         return str;
     }
 
+    // convert list to string
     public static <T> String listToStr(ArrayList<T> list) {
         return list.stream().map(Object::toString).collect(Collectors.joining(", "));
     }
 
-
+    // convert string to long array
     public static long[] strToArr1(String str) {
         ArrayList<Long> arrList = new ArrayList<>();
         String temp[];
@@ -296,6 +329,7 @@ public class Helper {
         return result;
     }
 
+    // convert list to integer array
     public static int[][] strToArr(ArrayList<String> list, int startRow, int endRow) {
         int numValsInRow = Helper.strToArr(list.get(startRow)).length;
 
@@ -309,6 +343,7 @@ public class Helper {
         return result;
     }
 
+    // convert list to long array
     public static long[][] strToArr1(ArrayList<String> list, int startRow, int endRow) {
         int numValsInRow = Helper.strToArr1(list.get(startRow)).length;
 
@@ -322,6 +357,7 @@ public class Helper {
         return result;
     }
 
+    // convert string to string array
     public static String[] strToStrArr(String str) {
         String result[] = str.split(", ");
         return result;
