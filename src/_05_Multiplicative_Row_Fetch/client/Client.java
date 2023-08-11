@@ -309,7 +309,7 @@ public class Client extends Thread {
     }
 
     /**
-     * This program is used to retrieve the records corresponding to requested row ids.
+     * This program is used to retrieve the records corresponding to requested row ids based on multiplicative shares.
      *
      * @param args takes as string a list of row ids e.g. "1,2,5,6"
      * @throws InterruptedException

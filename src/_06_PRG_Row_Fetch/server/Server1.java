@@ -18,36 +18,55 @@ import java.util.logging.Logger;
 
 public class Server1 {
 
+    // query string to get server data from database
     private static final String query_base = "select ORDERKEY, PARTKEY, LINENUMBER, SUPPKEY from " +
             Helper.getTablePrefix() + "SERVERTABLE1 where rowID > ";
 
 
+    // the number of row of tpch.lineitem considered
     private static int numRows;
+    // the number of threads server program is running on
     private static int numThreads;
+    // the number of row per thread
     private static int numRowsPerThread;
 
+    // storing block vector
     private static int[][] blockVec1;
+    // storing row vector
     private static int[][] rowVec1;
+    // storing row vector
     private static int[][] rowVec2;
+    // storing seed vector
     private static int[][] seedArr1;
+    // storing filter size
     private static int filter_size;
 
 
+    // store value for orderkey column of tpch.lineitem
     private static int[][] orderKeySum;
+    // store value for partkey column of tpch.lineitem
     private static int[][] partKeySum;
+    // store value for linenumber column of tpch.lineitem
     private static int[][] lineNumberSum;
+    // store value for subkey column of tpch.lineitem
     private static int[][][] subKeySum;
+    // storing number of row ids requested
     private static int querySize;
 
+    // stores result after server processing
     private static int[][][] result;
     private static ArrayList<Instant> timestamps = new ArrayList<>();
     private static final Logger log = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
-
+    // stores port for server
     private static int serverPort;
+    // stores port for client
     private static int clientPort;
+    // stores IP for client
     private static String clientIP;
 
+
+    // operation performed by each thread
     private static class ParallelTask implements Runnable {
 
         private final int threadNum;
@@ -58,6 +77,7 @@ public class Server1 {
 
         @Override
         public void run() {
+            // making connection to the database
             Connection con = null;
 
             try {
@@ -76,6 +96,7 @@ public class Server1 {
                 ResultSet rs = stmt.executeQuery(query);
 
                 int rowNumber;
+                // performing server operation on each row of the database
                 for (int i = startRow; i < endRow; i += filter_size) {
                     rowNumber = i / filter_size;
 
@@ -138,6 +159,7 @@ public class Server1 {
         }
     }
 
+    // executing server operation over threads
     private static void doWork(String[] data) {
 
         rowVec1 = Helper.strToStrArr1(data[0]);
@@ -183,6 +205,7 @@ public class Server1 {
         result[querySize][0][0] = 1;
     }
 
+    // performing operations on data received over socket
     static class SocketCreation {
 
         private final Socket clientSocketIn;
@@ -220,6 +243,7 @@ public class Server1 {
         }
     }
 
+    // starting server to listening for incoming connection
     private void startServer() throws IOException {
         Socket socket;
 
@@ -228,6 +252,7 @@ public class Server1 {
             System.out.println("Server1 Listening........");
 
             do {
+                // listening over socket for connections
                 socket = ss.accept();
                 timestamps = new ArrayList<>();
                 timestamps.add(Instant.now());
@@ -238,8 +263,12 @@ public class Server1 {
         }
     }
 
+    /**
+     * It performs initialization tasks
+     */
     private static void doPreWork() {
 
+        // reads configuration properties of the server
         String pathName = "config/Server1.properties";
         Properties properties = Helper.readPropertiesFile(pathName);
 
@@ -254,6 +283,7 @@ public class Server1 {
         filter_size = (int) Math.sqrt(numRows);
     }
 
+    // performs server task required to process client query
     public static void main(String[] args) throws IOException {
 
         doPreWork();
